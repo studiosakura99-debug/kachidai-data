@@ -1,0 +1,12 @@
+tasks=460 newest=09/17
+report fail 3356325 fetch failed: shell(21156B)
+report fail 3356324 fetch failed: shell(21283B)
+report fail 3356323 fetch failed: shell(21232B)
+report fail 3356322 fetch failed: shell(21247B)
+report fail 3356321 fetch failed: shell(21230B)
+report fail 3356320 fetch failed: shell(21386B)
+report fail 3356317 fetch failed: shell(21302B)
+report fail 3356316 fetch failed: shell(21242B)
+report fail 3356314 fetch failed: shell(21300B)
+report fail 3356313 fetch failed: shell(21311B)
+report fail 3356312 fetch failed: shell(21098B)
