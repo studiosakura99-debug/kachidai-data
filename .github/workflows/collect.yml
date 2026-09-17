@@ -1,25 +1,29 @@
 name: KachiDai data collect
 on:
   schedule:
-    - cron: '30 22 * * *'
+    # JST 07:00 / 12:00 / 15:00 / 17:00 / 24:00 (= UTC 22:00 / 03:00 / 06:00 / 08:00 / 15:00)
+    - cron: '0 3,6,8,15,22 * * *'
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: kachidai-collect
+  cancel-in-progress: false
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Collect min-repo (Miyagi only) -> latest.csv
+      - name: Collect min-repo (Miyagi only, incremental)
         env:
           KD_INTERVAL: "2.0"
-          KD_MAX: "460"
+          KD_MAX_NEW: "120"
         run: python3 collect.py
       - name: Commit
         run: |
           git config user.name "kachidai-bot"
           git config user.email "kachidai-bot@users.noreply.github.com"
-          git add latest.csv outside_ids.txt
-          git commit -m "data: $(date -u +%Y-%m-%d)" || echo "no change"
+          git add latest.csv outside_ids.txt id_verdicts.txt
+          git commit -m "data: $(date -u +%Y-%m-%dT%H:%MZ)" || echo "no change"
           git push
