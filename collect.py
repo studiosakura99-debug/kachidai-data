@@ -156,6 +156,16 @@ def load_rows():
         return list(csv.DictReader(open(CSV_PATH,encoding='utf-8')))
     return []
 
+def clean_dummy(r):
+    """差枚の ±0/±1 は提供元のダミー（非公開）なので空にする。"""
+    try:
+        v=r.get("difference")
+        if v is not None and str(v).strip() not in ("","-"): 
+            iv=int(float(str(v).replace(",","").replace("+","")))
+            if abs(iv)<=1: r["difference"]=""
+    except Exception: pass
+    return r
+
 def _score(r):
     n=0
     for k in ("difference","games","payout_rate"):
@@ -167,6 +177,8 @@ def _score(r):
 def write_rows(rows):
     cutoff=(datetime.date.today()-datetime.timedelta(days=KEEP_DAYS)).isoformat()
     rows=[r for r in rows if (r.get('business_date') or '')>=cutoff and rid_of(r.get('source_url',''))]
+    for r in rows:
+        clean_dummy(r)
     best={}
     for r in rows:
         k=(r.get('business_date'),r.get('hall'),r.get('machine_number'))
