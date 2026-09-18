@@ -90,6 +90,56 @@ def parse_report(page,url):
         out.append([ds,hall,cells[0],no,to_int(cells[2]),to_int(cells[3]),to_dec(cells[4]),url])
     return out
 
+TABLE = re.compile(r'(?is)<table[^>]*>(.*?)</table>')
+TROW  = re.compile(r'(?is)<tr[^>]*>(.*?)</tr>')
+TH    = re.compile(r'(?is)<th[^>]*>(.*?)</th>')
+
+def _colmap(cells):
+    """ヘッダ行のセル文字列から「台番号/差枚/G数/出率/機種」の列位置を割り出す。"""
+    m={}
+    for i,c in enumerate(cells):
+        c=(c or "").strip()
+        if ("台番号" in c or "台No" in c or "台no" in c) and "num" not in m: m["num"]=i
+        elif "差枚" in c and "diff" not in m: m["diff"]=i
+        elif ("G数" in c or "ゲーム数" in c) and "games" not in m: m["games"]=i
+        elif "出率" in c and "payout" not in m: m["payout"]=i
+        elif ("機種" in c or "機種名" in c) and "machine" not in m: m["machine"]=i
+    return m
+
+def parse_report2(page, url):
+    """全台データ一覧テーブルだけを読む。機種別ランキング等の別テーブルは列見出しで除外する。"""
+    tm=TITLE.search(page); title=text(tm.group(1)) if tm else ""
+    dm=DATE_R.search(title)
+    if not dm: return []
+    mo,da=int(dm.group(1)),int(dm.group(2))
+    yr=datetime.date.today().year
+    pm=PUBLISHED.search(page)
+    if pm:
+        yr=int(pm.group(1))
+        if mo==12 and int(pm.group(2))==1: yr-=1
+    ds="%04d-%02d-%02d"%(yr,mo,da)
+    hall=title[dm.end():].strip()
+    out=[]
+    for tb in TABLE.finditer(page):
+        body=tb.group(1)
+        rows=TROW.findall(body)
+        if not rows: continue
+        cols=[]
+        hdr=_colmap([text(c) for c in TH.findall(rows[0])] + [text(c) for c in CELL.findall(rows[0])])
+        if "num" not in hdr or ("diff" not in hdr and "games" not in hdr):
+            continue
+        for r in rows:
+            cells=[text(c) for c in CELL.findall(r)]
+            if len(cells) <= hdr.get("num",99): continue
+            no=to_int(cells[hdr["num"]])
+            if not no or no<=0 or no>9999: continue
+            dif=to_int(cells[hdr["diff"]]) if "diff" in hdr and hdr["diff"]<len(cells) else None
+            gam=to_int(cells[hdr["games"]]) if "games" in hdr and hdr["games"]<len(cells) else None
+            pay=to_dec(cells[hdr["payout"]]) if "payout" in hdr and hdr["payout"]<len(cells) else None
+            mach=cells[hdr["machine"]] if "machine" in hdr and hdr["machine"]<len(cells) else (cells[0] if cells else "")
+            out.append([ds,hall,mach,no,dif,gam,pay,url])
+    return out
+
 def rid_of(u): 
     m=re.search(r'/(\d+)/', u or ""); return m.group(1) if m else ""
 
@@ -106,14 +156,24 @@ def load_rows():
         return list(csv.DictReader(open(CSV_PATH,encoding='utf-8')))
     return []
 
+def _score(r):
+    n=0
+    for k in ("difference","games","payout_rate"):
+        if (r.get(k) or "").strip() not in ("","0"): n+=1
+    if (r.get("difference") or "").strip() not in ("",): n+=2
+    if (r.get("payout_rate") or "").strip() not in ("",): n+=1
+    return n
+
 def write_rows(rows):
     cutoff=(datetime.date.today()-datetime.timedelta(days=KEEP_DAYS)).isoformat()
     rows=[r for r in rows if (r.get('business_date') or '')>=cutoff and rid_of(r.get('source_url',''))]
-    seen=set(); ded=[]
-    for r in sorted(rows,key=lambda x:(x.get('business_date',''),x.get('hall',''),x.get('machine',''),str(x.get('machine_number',''))),reverse=True):
+    best={}
+    for r in rows:
         k=(r.get('business_date'),r.get('hall'),r.get('machine_number'))
-        if k in seen: continue
-        seen.add(k); ded.append(r)
+        cur=best.get(k)
+        if cur is None or _score(r)>_score(cur):
+            best[k]=r
+    ded=[best[k] for k in sorted(best)]
     with open(CSV_PATH,'w',encoding='utf-8',newline='\n') as f:
         w=csv.DictWriter(f,fieldnames=HEADER); w.writeheader()
         for r in ded: w.writerow({k:(r.get(k) or '') for k in HEADER})
@@ -158,7 +218,7 @@ def main():
             v[rid]="miyagi" if g=="宮城県" else ("outside" if g else "unknown")
             if v[rid]!="miyagi":
                 print("  SKIP %s: %s"%(store,g or "group無し")); time.sleep(INTERVAL); continue
-            rs=parse_report(page,url)
+            rs=parse_report2(page,url)
             if rs:
                 rows.extend(dict(zip(HEADER,[str(x) if x is not None else '' for x in r])) for r in rs)
                 have.add(rid); picked+=1; added_rows+=len(rs); got_total+=1
@@ -197,7 +257,7 @@ def main():
         g=(CG.findall(page) or [""])[0].strip()
         v[rid]="miyagi" if g=="宮城県" else ("outside" if g else "unknown")
         if v[rid]!="miyagi": time.sleep(INTERVAL); continue
-        rs=parse_report(page,url)
+        rs=parse_report2(page,url)
         if rs:
             rows.extend(dict(zip(HEADER,[str(x) if x is not None else '' for x in r])) for r in rs)
             catgot+=1; added_rows+=len(rs)
