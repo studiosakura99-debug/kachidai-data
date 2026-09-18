@@ -18,7 +18,8 @@ jobs:
       - name: Collect min-repo (Miyagi only, incremental)
         env:
           KD_INTERVAL: "2.0"
-          KD_MAX_NEW: "120"
+          KD_MAX_NEW: "450"
+          KD_PER_STORE: "8"
         run: python3 collect.py
       - name: Commit
         run: |

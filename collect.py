@@ -4,12 +4,13 @@
 #  - 増分収集（未取得リポートだけ取得して累積CSVに追記）
 #  - 既存行の県外判定キャッシュ（id_verdicts.txt）で再判定コストを最小化
 #  - 90日でローリング
-import re, sys, time, html as H, urllib.request, urllib.error, datetime, os, csv
+import re, sys, time, html as H, urllib.request, urllib.parse, urllib.error, datetime, os, csv
 
 ROOT = "https://min-repo.com"
 UA = "KachiDaiResearch/2.2.9 (+data-quality-contact-not-configured)"
 INTERVAL = float(os.environ.get("KD_INTERVAL", "2.0"))
-MAX_NEW = int(os.environ.get("KD_MAX_NEW", "120"))
+MAX_NEW = int(os.environ.get("KD_MAX_NEW", "450"))
+PER_STORE = int(os.environ.get("KD_PER_STORE", "8"))
 CSV_PATH = "latest.csv"
 VERDICTS = "id_verdicts.txt"
 KEEP_DAYS = 90
@@ -166,6 +167,30 @@ def main():
                     seen.add(rid); tasks.append((rid,tm.group(2).strip(),date_key(tm.group(1))))
             if n==0: break
             time.sleep(INTERVAL)
+    # 2b) 店舗検索（?s=店名）— カテゴリ一覧に載らない店のリポートを拾う
+    stores=[]
+    if os.path.exists("stores_miyagi.txt"):
+        stores=[l.strip() for l in open("stores_miyagi.txt",encoding="utf-8") if l.strip()]
+    found=0
+    for name in stores:
+        got=0
+        for page in range(1,3):
+            q=urllib.parse.quote(name)
+            u=ROOT+"/?s="+q if page==1 else ROOT+"/page/%d/?s=%s"%(page,q)
+            try: body=fetch(u)
+            except Exception as e:
+                print("search fail",name,e,file=sys.stderr); break
+            n=0
+            for m in ANCHOR.finditer(body):
+                n+=1; rid=m.group(1); title=H.unescape(m.group(2)).strip()
+                tm=TITLE_DATE.match(title)
+                if tm and rid not in seen and got<PER_STORE:
+                    seen.add(rid); got+=1; found+=1
+                    tasks.append((rid,tm.group(2).strip(),date_key(tm.group(1))))
+            if n==0 or got>=PER_STORE: break
+            time.sleep(INTERVAL)
+        time.sleep(INTERVAL)
+    print("店舗検索で追加: %d 件 / 検索店舗 %d"%(found,len(stores)))
     tasks.sort(key=lambda t:t[2],reverse=True)
     print("新着候補: %d / 取得上限 %d"%(len(tasks),MAX_NEW))
     added=0; nogroup=0; failed=0
