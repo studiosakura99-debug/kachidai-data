@@ -19,10 +19,10 @@ jobs:
           fetch-depth: 0
       - name: Collect min-repo (Miyagi only, incremental)
         env:
-          KD_INTERVAL: "1.2"
-          KD_BUDGET: "260"
-          KD_PER_STORE: "3"
-        run: python3 collect.py
+          KD_INTERVAL: "3.0"
+          KD_BUDGET: "150"
+          KD_PER_STORE: "2"
+        run: python3 collect_safe.py
       - name: Upload CSV artifact (push失敗でもデータを失わない)
         if: always()
         uses: actions/upload-artifact@v4
@@ -32,6 +32,7 @@ jobs:
             latest.csv
             outside_ids.txt
             id_verdicts.txt
+            collect_blocked.txt
           if-no-files-found: warn
       - name: Commit
         run: |
