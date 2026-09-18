@@ -20,8 +20,8 @@ jobs:
       - name: Collect min-repo (Miyagi only, incremental)
         env:
           KD_INTERVAL: "1.2"
-          KD_MAX_NEW: "150"
-          KD_PER_STORE: "4"
+          KD_BUDGET: "260"
+          KD_PER_STORE: "3"
         run: python3 collect.py
       - name: Upload CSV artifact (push失敗でもデータを失わない)
         if: always()
