@@ -1,0 +1,22 @@
+name: KachiDai diag
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Diagnose min-repo report structure
+        run: python3 diag.py
+      - name: Commit diag
+        run: |
+          git config user.name "kachidai-bot"
+          git config user.email "kachidai-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "diag: min-repo report structure" || echo "no change"
+          for i in 1 2 3 4 5; do git pull --rebase --autostash origin main && git push origin HEAD:main && break; sleep 10; done
