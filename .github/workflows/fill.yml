@@ -1,0 +1,28 @@
+name: KachiDai fill missing reports
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: kachidai-collect
+  cancel-in-progress: false
+jobs:
+  fill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Fill missing report ids
+        env: {KD_INTERVAL: "3.0"}
+        run: python3 fill_ids.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: kachidai-csv, path: "latest.csv", if-no-files-found: warn}
+      - name: Commit
+        run: |
+          git config user.name "kachidai-bot"
+          git config user.email "kachidai-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "data: fill missing 9/17 reports" || echo "no change"
+          for i in 1 2 3 4 5; do git pull --rebase --autostash origin main && git push origin HEAD:main && break; sleep 10; done
