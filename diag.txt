@@ -1,0 +1,7 @@
+### 目的: min-repo のリポートで「差枚」がどの台に載るのかを実ページで確認する
+
+URL https://min-repo.com/3357858/?kishu=all len=0 差枚出現=0 tr=0 td=0
+rows>=5cells=0 うち差枚が数値の行=0
+
+URL https://min-repo.com/3355872/?kishu=all len=0 差枚出現=0 tr=0 td=0
+rows>=5cells=0 うち差枚が数値の行=0
