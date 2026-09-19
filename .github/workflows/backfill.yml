@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0
       - name: Backfill past reports (Miyagi only)
         env:
-          KD_INTERVAL: "1.0"
+          KD_INTERVAL: "6.0"
           KD_BUDGET: ${{ github.event.inputs.budget }}
           KD_PER_STORE: ${{ github.event.inputs.per_store }}
         run: python3 collect_safe.py

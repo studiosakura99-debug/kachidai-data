@@ -34,6 +34,8 @@ HEADER = ["business_date","hall","machine","machine_number","difference","games"
 
 def text(s): return H.unescape(TAGS.sub("", s)).strip()
 
+BACKOFF = float(os.environ.get("KD_BACKOFF", "20"))
+
 def fetch(url):
     last = None
     for a in range(2):
@@ -42,7 +44,8 @@ def fetch(url):
             with urllib.request.urlopen(req, timeout=45) as r:
                 b = r.read().decode("utf-8", "replace")
             if len(b) < 40000 and "<tr" not in b:
-                last = "shell(%dB)" % len(b); time.sleep(2); continue
+                # レート制限の可能性が高い。長く待って1回だけ再挑戦する。
+                last = "shell(%dB)" % len(b); time.sleep(BACKOFF); continue
             return b
         except urllib.error.HTTPError as e:
             last = e.code

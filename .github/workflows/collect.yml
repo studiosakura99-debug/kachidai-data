@@ -19,9 +19,9 @@ jobs:
           fetch-depth: 0
       - name: Collect min-repo (Miyagi only, incremental)
         env:
-          KD_INTERVAL: "3.0"
-          KD_BUDGET: "150"
-          KD_PER_STORE: "2"
+          KD_INTERVAL: "6.0"
+          KD_BUDGET: "90"
+          KD_PER_STORE: "3"
         run: python3 collect_safe.py
       - name: Upload CSV artifact (push失敗でもデータを失わない)
         if: always()
